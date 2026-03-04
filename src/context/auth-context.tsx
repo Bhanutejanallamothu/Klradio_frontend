@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     } catch (error: any) {
       setLoading(false);
-      const errorMessage = error.response?.data?.message || 'Login failed. Please reload the page and try again.';
+      const errorMessage = error.response?.data?.message || 'Login failed.';
       return { success: false, error: errorMessage };
     }
   }, [router]);
