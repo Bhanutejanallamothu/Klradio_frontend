@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { toast } = useToast();
   const justLoggedInRef = useRef(false);
-  
+
   const verifyAuth = useCallback(async () => {
     if (justLoggedInRef.current) {
       justLoggedInRef.current = false;
@@ -48,41 +48,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isPublicPage = publicPages.some(page => (page === '/' && pathname === '/') || (page !== '/' && pathname.startsWith(page)));
 
     if (!token) {
-        if (!isPublicPage && !isAuthPage) {
-            router.replace('/login');
-        }
-        setLoading(false);
-        return;
+      if (!isPublicPage && !isAuthPage) {
+        router.replace('/login');
+      }
+      setLoading(false);
+      return;
     }
 
     setAuthToken(token);
     try {
-        const response = await api.get('/auth/me');
-        if (response.data && response.data.user) {
-            const userData = response.data.user;
-            const apiUser: User = {
-                id: userData.id,
-                name: userData.name,
-                username: userData.username,
-                role: userData.role,
-                avatarId: userData.avatarId || '1',
-            };
-            setUser(apiUser);
-        } else {
-            throw new Error('Invalid session');
-        }
+      const response = await api.get('/auth/me');
+      if (response.data && response.data.user) {
+        const userData = response.data.user;
+        const apiUser: User = {
+          id: userData.id,
+          name: userData.name,
+          username: userData.username,
+          role: userData.role,
+          avatarId: userData.avatarId || '1',
+        };
+        setUser(apiUser);
+      } else {
+        throw new Error('Invalid session');
+      }
     } catch (error: any) {
-        console.error('Session verification failed', error);
-        if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            setAuthToken(null);
-            setUser(null);
-            if (!isPublicPage && !isAuthPage) {
-                router.replace('/login');
-            }
+      console.error('Session verification failed', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        setAuthToken(null);
+        setUser(null);
+        if (!isPublicPage && !isAuthPage) {
+          router.replace('/login');
         }
+      }
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }, [pathname, router]);
 
@@ -90,13 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     verifyAuth();
   }, [verifyAuth]);
 
-  useEffect(() => {
-    if (user && pathname === '/login') {
-      const redirectPath = roleRedirects[user.role] || '/dashboard';
-      router.replace(redirectPath);
-    }
-  }, [user, pathname, router]);
-  
+  // Removed problematic useEffect handling redirect based on `user` state change
+
   const login = useCallback(async (role: string, username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
     try {
@@ -105,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       localStorage.setItem('token', token);
       setAuthToken(token);
-      
+
       const apiUser: User = {
         id: userData.id,
         name: userData.name,
@@ -116,24 +111,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       justLoggedInRef.current = true;
       setUser(apiUser);
       setLoading(false);
-      
+
+      // Perform direct redirect instead of relying on state effects
+      const redirectPath = roleRedirects[apiUser.role as UserRole] || '/dashboard';
+      router.replace(redirectPath);
+
       return { success: true };
     } catch (error: any) {
       setLoading(false);
-      const errorMessage = error.response?.data?.message || 'Login failed. Please after reloading the page and try again.';
+      const errorMessage = error.response?.data?.message || 'Login failed. Please reload the page and try again.';
       return { success: false, error: errorMessage };
     }
-  }, []);
-  
+  }, [router]);
+
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('token');
     setAuthToken(null);
     router.push('/login');
   }, [router]);
-  
-  const addSongSuggestion = useCallback(async (suggestion: Omit<SongSuggestion, 'id' | 'submittedAt' | 'status'>) : Promise<{ success: boolean }> => {
-     try {
+
+  const addSongSuggestion = useCallback(async (suggestion: Omit<SongSuggestion, 'id' | 'submittedAt' | 'status'>): Promise<{ success: boolean }> => {
+    try {
       await api.post('/public/song-suggestion', suggestion);
       return { success: true };
     } catch (error: any) {
